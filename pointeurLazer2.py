@@ -1,11 +1,11 @@
-import pygame
 import requests
 import json
 import time
 import math
+import pyautogui
 
 # Configuration Adafruit IO
-ADAFRUIT_IO_KEY = 'aio_OzEj24OYumLFZAGTLs8QPsEq5QLk'
+ADAFRUIT_IO_KEY = 'aio_wJFt18d2Azl9yYkdMNs8CRcTJIm0'
 ADAFRUIT_IO_USERNAME = 'valval'
 FEED_ID = 'positions'
 API_URL = f"https://io.adafruit.com/api/v2/{ADAFRUIT_IO_USERNAME}/feeds/{FEED_ID}/data/last"
@@ -24,66 +24,43 @@ def get_latest_feed_data():
         print(f"Erreur: {response.status_code}")
         return None, None
 
+# Fonction pour mapper une valeur d'une plage à une autre
+def remap(old_value, old_min, old_max, new_min, new_max):
+    return (old_value - old_min) * (new_max - new_min) / (old_max - old_min) + new_min
 
-# Initialisation de pygame
-pygame.init()
-
-# Récupérer la résolution de l'écran
-infoObject = pygame.display.Info()
-width, height = infoObject.current_w, infoObject.current_h
-
-# Configuration de la fenêtre
-screen = pygame.display.set_mode((width, height), pygame.NOFRAME)
-pygame.display.set_caption("Pointeur Laser")
-
-
-# Couleur du point (rouge)
-red = (255, 0, 0)
-
-# Initialisation des variables pour le mouvement
-current_x, current_y = width // 2, height // 2
-target_x, target_y = current_x, current_y
-speed = 0.05  # Vitesse de déplacement du pointeur vers la cible
+# Obtenir la taille de l'écran
+screen_width, screen_height = pyautogui.size()
 
 # Boucle principale
 running = True
-start_time = time.time()
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+speed = 1 # Contrôlez la vitesse du mouvement du curseur
 
+while running:
     # Récupérer les données depuis Adafruit IO
     delta_x, delta_y = get_latest_feed_data()
 
-    elapsed_time = (time.time() - start_time) % 1  # Normalisé entre 0 et 1
-    sigmoid = 1 / (1 + math.exp(-10*(elapsed_time - 0.5)))
-
     if delta_x is not None and delta_y is not None:
-        target_x, target_y = delta_x, delta_y
+        # Convertir les valeurs delta_x et delta_y pour correspondre à la taille de l'écran
+        target_x = remap(delta_x, -128, 127, 0, screen_width)
+        target_y = remap(delta_y, -128, 127, 0, screen_height)
 
-        # Calcul de la différence entre la position actuelle et la cible
-        diff_x = target_x - current_x
-        diff_y = target_y - current_y
+        # Obtenir la position actuelle du curseur
+        current_x, current_y = pyautogui.position()
 
-        # Mise à jour des positions en fonction de la vitesse
-        current_x += diff_x * speed
-        current_y += diff_y * speed
-        # Écrire la position du point
+        # Calculer les étapes de déplacement pour le curseur
+        step_x = (target_x - current_x) / speed
+        step_y = (target_y - current_y) / speed
+
+        # Bouger le curseur progressivement vers la position cible
+        for _ in range(speed):
+            current_x += step_x
+            current_y += step_y
+            pyautogui.moveTo(current_x, current_y)
+            time.sleep(0.01)  # Temps de pause pour voir le mouvement
+
+        # Écrire la position du curseur
         print(f"Position du curseur : x = {current_x}, y = {current_y}")
 
-        # Effacer l'écran
-        screen.fill((0, 0, 0, 0))  # Remplir avec une couleur transparente
-        
-        # Dessiner le point rouge à la position calculée
-        pygame.draw.circle(screen, red, (current_x, current_y), 5)
-
-        # Mettre à jour l'affichage
-        pygame.display.flip()
-
     # Attendre avant la prochaine requête
-    time.sleep(0.05)  # Réduisez cette valeur pour une animation plus fluide
-
-# Quitter pygame
-pygame.quit()
+    time.sleep(0.05)
 

@@ -1,11 +1,12 @@
 import requests
 import sys
+import json
 
 def send_to_adafruit_io(x, y):
     # Votre clé et nom d'utilisateur Adafruit IO
-    ADAFRUIT_IO_KEY = 'aio_iIXw136O8E8SyHjsQEiHupnTX2kf'
+    ADAFRUIT_IO_KEY = 'aio_wJFt18d2Azl9yYkdMNs8CRcTJIm0'
     ADAFRUIT_IO_USERNAME = 'valval'
-    FEED_ID = 'pointeurlazer'
+    FEED_ID = 'positions'
     
     # URL du feed
     url = f"https://io.adafruit.com/api/v2/{ADAFRUIT_IO_USERNAME}/feeds/{FEED_ID}/data"
@@ -15,12 +16,12 @@ def send_to_adafruit_io(x, y):
         'X-AIO-Key': ADAFRUIT_IO_KEY,
     }
 
-    # Données à envoyer
+    # Données à envoyer sous forme de dictionnaire JSON
     payload = {
-        'value': f"x:{x},y:{y}"
+        'value': json.dumps({"x": int(x), "y": int(y)})
     }
     
-    # Envoyer la requête POST
+    # Envoyer la requête POST avec les données JSON
     response = requests.post(url, headers=headers, json=payload)
     
     if response.status_code == 201:
