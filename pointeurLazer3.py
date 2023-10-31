@@ -1,11 +1,9 @@
 import requests
 import json
-import time
 import tkinter as tk
-import pyautogui
 
 # Configuration Adafruit IO
-ADAFRUIT_IO_KEY = 'aio_EvvJ15E0NlrMhlFP04L83cZAOpxG'
+ADAFRUIT_IO_KEY = 'aio_YOYa32DiptVNpCXzOmUxyae0gSbM'
 ADAFRUIT_IO_USERNAME = 'valval'
 FEED_ID = 'positions'
 API_URL = f"https://io.adafruit.com/api/v2/{ADAFRUIT_IO_USERNAME}/feeds/{FEED_ID}/data/last"
@@ -19,44 +17,42 @@ def get_latest_feed_data():
     if response.status_code == 200:
         data = json.loads(response.text)
         value = json.loads(data['value'])
-        print(f"Dernière valeur lue : x = {value['x']}, y = {value['y']}")  # Debug de la dernière valeur lue
         return value["x"], value["y"]
     else:
         print(f"Erreur: {response.status_code}")
         return None, None
 
-def move_circle(delta_x, delta_y):
-    # Conversion des valeurs delta_x et delta_y pour correspondre à la taille de l'écran
-    target_x = screen_center_x + (circle_radius * delta_x / 128)
-    target_y = screen_center_y + (circle_radius * delta_y / 128)
-    canvas.coords(circle, target_x - circle_radius, target_y - circle_radius, target_x + circle_radius, target_y + circle_radius)
+circle_radius = 20
 
 def update_circle_position():
-    # Récupérer les données depuis Adafruit IO
-    delta_x, delta_y = get_latest_feed_data()
+    x, y = get_latest_feed_data()
+    if x and y and -128 <= x <= 127 and -128 <= y <= 127:
+        print(f"Valeurs lues: x = {x}, y = {y}")
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+        center_x = screen_width // 2
+        center_y = screen_height // 2
+        scaled_x = x * (screen_width // 256)
+        scaled_y = y * (screen_height // 256)
+        new_x = center_x + scaled_x
+        new_y = center_y + scaled_y
+        circle_win.geometry(f"{2*circle_radius}x{2*circle_radius}+{int(new_x-circle_radius)}+{int(new_y-circle_radius)}")
+    root.after(500, update_circle_position)
 
-    if delta_x is not None and delta_y is not None:
-        move_circle(delta_x, delta_y)
-    
-    root.after(1000, update_circle_position)  # Rafraîchissement toutes les secondes
-
-# GUI avec tkinter
 root = tk.Tk()
 root.overrideredirect(True)
 root.geometry(f"{root.winfo_screenwidth()}x{root.winfo_screenheight()}")
-root.attributes('-alpha', 0.4)
-root.configure(bg='')
+root.attributes('-alpha', 0.01)
 
-canvas = tk.Canvas(root, bg='white', highlightthickness=0)
+circle_win = tk.Toplevel(root)
+circle_win.overrideredirect(True)
+circle_win.attributes('-alpha', 1, '-transparentcolor', 'white')
+circle_win.geometry(f"{2*circle_radius}x{2*circle_radius}")
+
+canvas = tk.Canvas(circle_win, highlightthickness=0, bd=0, bg='white')
 canvas.pack(fill=tk.BOTH, expand=tk.YES)
+canvas.create_oval(0, 0, 2*circle_radius, 2*circle_radius, fill='red')
 
-screen_center_x = root.winfo_screenwidth() // 2
-screen_center_y = root.winfo_screenheight() // 2
-circle_radius = min(screen_center_x, screen_center_y) // 10
-circle = canvas.create_oval(screen_center_x - circle_radius, screen_center_y - circle_radius,
-                            screen_center_x + circle_radius, screen_center_y + circle_radius, fill='red')
+update_circle_position()
 
-canvas.bind_all('<Key>', lambda event: root.destroy() if event.keysym == 'Escape' else None)
-
-update_circle_position()  # Initialisation de la mise à jour de la position du cercle
 root.mainloop()
