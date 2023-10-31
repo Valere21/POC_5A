@@ -4,7 +4,7 @@ import json
 from Adafruit_IO import MQTTClient
 
 # Configuration Adafruit IO
-ADAFRUIT_IO_KEY = 'aio_oLgB78RAMwIcz3v7NcZl6Olssxuf'
+ADAFRUIT_IO_KEY = 'aio_BSjZ24yHMqSP0r6znKs6lqKVhjNl'
 ADAFRUIT_IO_USERNAME = 'valval'
 FEED_ID = 'positions'
 
@@ -25,6 +25,21 @@ canvas = tk.Canvas(circle_win, highlightthickness=0, bd=0, bg='white')
 canvas.pack(fill=tk.BOTH, expand=tk.YES)
 canvas.create_oval(0, 0, 2*circle_radius, 2*circle_radius, fill='red')
 
+circle = canvas.create_oval(0, 0, 2*circle_radius, 2*circle_radius, fill='red')
+
+def animate_circle_movement(target_x, target_y):
+    current_x = circle_win.winfo_x()
+    current_y = circle_win.winfo_y()
+
+    dx = (target_x - current_x) / 10
+    dy = (target_y - current_y) / 10
+
+    if abs(dx) < 1 and abs(dy) < 1:
+        return  # la fenêtre est déjà à la position cible ou très proche
+
+    circle_win.geometry(f"+{int(current_x + dx)}+{int(current_y + dy)}")
+    root.after(50, lambda: animate_circle_movement(target_x, target_y))
+
 # Callback pour le client MQTT
 def message(client, feed_id, payload):
     try:
@@ -40,7 +55,9 @@ def message(client, feed_id, payload):
             scaled_y = y * (screen_height // 256)
             new_x = center_x + scaled_x
             new_y = center_y + scaled_y
-            circle_win.geometry(f"{2*circle_radius}x{2*circle_radius}+{int(new_x-circle_radius)}+{int(new_y-circle_radius)}")
+
+            # Mise à jour du mouvement du cercle
+            animate_circle_movement(new_x, new_y)
     except Exception as e:
         print(f"Erreur: {e}")
 
